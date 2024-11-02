@@ -79,10 +79,7 @@ struct Token
 
 struct Lexer
 {
-	Lexer(std::string &input, Arena &perm_arena) : input(input), string_arena(perm_arena)
-	{
-
-	}
+	Lexer(std::string &input, Arena &perm_arena) : input(input), arena(perm_arena) {}
 
 	std::vector<Token *> tokens;
 	std::vector<std::string> lines;
@@ -90,11 +87,10 @@ struct Lexer
 
 	std::string &input;
 	int current_line_number = 1;
-	int current_character_index = 0;
+	int current_character_index = 1;
 
 
-	Arena arena = Arena(STRING_ARENA_SIZE);
-	Arena &string_arena;
+	Arena &arena;
 
 	char string_buffer[256];
 	int num_tokens = 0;
@@ -102,7 +98,6 @@ struct Lexer
 	int input_cursor = 0;
 
 	bool error_reported = false;
-	bool first_pass = true;
 };
 
 Token *compose_new_token(Lexer *lexer);

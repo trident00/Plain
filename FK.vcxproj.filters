@@ -6,7 +6,6 @@
   <ItemGroup>
     <ClCompile Include="src\lexer.cpp" />
     <ClCompile Include="src\parser.cpp" />
-    <ClCompile Include="src\error.cpp" />
     <ClCompile Include="src\ast.cpp" />
     <ClCompile Include="src\util.cpp" />
     <ClCompile Include="src\interp.cpp" />
@@ -16,7 +15,6 @@
   <ItemGroup>
     <ClInclude Include="src\parser.h" />
     <ClInclude Include="src\lexer.h" />
-    <ClInclude Include="src\error.h" />
     <ClInclude Include="src\ast.h" />
     <ClInclude Include="src\util.h" />
     <ClInclude Include="src\interp.h" />

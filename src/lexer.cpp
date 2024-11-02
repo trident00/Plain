@@ -15,6 +15,9 @@ void eat_character(Lexer *lexer)
 		lexer->lines.push_back(lexer->line_buffer);
 		lexer->line_buffer.clear();
 
+		c = lexer->input[lexer->input_cursor];
+		while (c == '\t' || c == ' ') c = lexer->input[++lexer->input_cursor];
+
 		lexer->current_line_number++;
 		lexer->current_character_index = 0;
 
@@ -23,12 +26,10 @@ void eat_character(Lexer *lexer)
 	lexer->current_character_index++;
 }
 
-int peek_next_character(Lexer *lexer)
+char peek_next_character(Lexer *lexer)
 {
 	if (lexer->input_cursor > lexer->input.length()) return -1;
-
-	int next_char = lexer->input[lexer->input_cursor];
-	return next_char;
+	return lexer->input[lexer->input_cursor];
 }
 
 bool starts_word(int c)
@@ -91,7 +92,7 @@ Token *make_one_character_token(Lexer *lexer, char type = 0)
 {
 	Token *result = token_alloc(lexer);
 	result->type = (Token_Type)type;
-	result->string_value = string_alloc(lexer->string_arena, type);
+	result->string_value = string_alloc(lexer->arena, type);
 	return result;
 }
 
@@ -102,7 +103,7 @@ Token *make_ident_or_keyword(Lexer *lexer)
 	result->type = TOKEN_IDENT;
 
 	auto *word = parse_word(lexer, result);
-	result->string_value = string_alloc(lexer->string_arena, word);
+	result->string_value = string_alloc(lexer->arena, word);
 
 	Token_Type keyword_type = check_for_keyword(result);
 	if (keyword_type) result->type = keyword_type;

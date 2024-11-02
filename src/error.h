@@ -8,8 +8,8 @@
 
 enum Error_Severity
 {
-	WARNING,
-	ERROR,
+	_WARNING,
+	_ERROR,
 };
 
 enum Error_Reporter
@@ -30,7 +30,7 @@ enum Error_Type
 
 struct Error
 {
-	Error_Severity severity = ERROR;
+	Error_Severity severity = _ERROR;
 	Error_Reporter reporter = NONE;
 	Error_Type type = ERROR_DEFAULT;
 	char *msg;

@@ -1,7 +1,6 @@
 #include <string>
 #include <deque>
 #include <sstream>
-#include "error.h"
 #include "util.h"
 
 

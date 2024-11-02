@@ -21,11 +21,15 @@ std::vector<std::string> parse_lines(std::string source)
 	std::vector<std::string> result;
 	result.push_back("");
 
+
 	while (1) {
-		size_t pos = source.find('\n');
-		if (pos == std::string::npos || source.empty()) break;
-		result.push_back(source.substr(0, pos));
-		source.erase(0, pos + 1);
+		size_t pos = 0;
+		size_t endpos = source.find('\n');
+		if (endpos == std::string::npos || source.empty()) break;
+
+		result.push_back(source.substr(pos, endpos - pos));
+		source.erase(pos, endpos - pos+1);
 	}
+	result.push_back(source);
 	return result;
 }

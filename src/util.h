@@ -6,8 +6,26 @@
 #include <stdexcept>
 #include <string>
 
-const size_t ARENA_SIZE = 16 * 1024;  // 16 KB arena size
+#ifdef _WIN32
+#include "Windows.h"
+inline void set_color(int color) {
+	HANDLE h = GetStdHandle(STD_OUTPUT_HANDLE);
+	SetConsoleTextAttribute(h, color);
+}
+#define RESET   (set_color(7), "")
+#define RED     (set_color(4), "")
+#define BLUE    (set_color(1), "")
+#define CYAN    (set_color(3), "")
+#else
+#define RESET   "\033[0m"
+#define RED     "\033[31m"
+#define BLUE    "\033[34m"
+#define CYAN    "\033[36m" 
+#endif
 
+#define Foreach(arr) for (int i = 0; i < arr.size; ++i)
+
+const size_t ARENA_SIZE = 16 * 1024;  // 16 KB arena size
 
 struct Arena
 {
@@ -49,76 +67,37 @@ struct Arena
 template<typename T>
 struct Array
 {
-	Array(Arena &arena, size_t cap)
-		: arena(arena), capacity(cap), size(0) {
-		data = (T *)arena.allocate<T>(sizeof(T) * capacity);
+	Array(Arena &a, bool alloc = true, size_t cap=16) : using_stack(false), capacity(16) {
+		arena = &a;
+		if (alloc) allocate(cap);
 	}
 
-	Arena &arena;
+	void allocate(size_t cap) {
+		data = (T *)arena->allocate<T>(cap * sizeof(T));
+		capacity = cap;
+	}
+
+	bool using_stack;
+	Arena *arena;
 	size_t capacity;
-	size_t size;
-	T *data;
+	size_t size = 0;
+
+	T *data = nullptr;
 
 	void push(const T &val) {
-		if (size == capacity) {
-			throw std::bad_alloc();
-		}
-		data[size++] = val;
-
-	}
-
-	T &peek() {
-		return data[size - 1];
-	}
-
-	const T &peek() const {
-		return data[size-1];
-	}
-
-	T &operator[](size_t index) {
-		if (index >= capacity) {
-			throw std::out_of_range("Index out of bounds");
-		}
-		return data[index];
-	}
-
-	const T &operator[](size_t index) const {
-		if (index >= capacity) {
-			throw std::out_of_range("Index out of bounds");
-		}
-		return data[index];
-	}
-};
-
-template<typename T>
-struct MutableArray
-{
-
-	MutableArray(Arena &arena, size_t init_cap = 16)
-		: arena(arena), capacity(init_cap), size(0) {
-		data = (T *)arena.allocate<T>(capacity * sizeof(T));
-	}
-
-	Arena &arena;
-	size_t capacity;
-	size_t size;
-	T *data;
-
-	void push(const T &val) {
-		if (size == capacity) {
+		if (size >= capacity) {
 			capacity *= 2;
-			T *new_data = (T *)arena.allocate<T>(capacity * sizeof(T));
+			T *new_data = (T *)arena->allocate<T>(capacity * sizeof(T));
 			std::memcpy(new_data, data, size * sizeof(T));
 			data = new_data;
-
 		}
 		data[size++] = val;
 	}
 
+	T &peek() { return data[size]; }
+
 	void clear() {
-		capacity = 16;
 		size = 0;
-		data = (T *)arena.allocate<T>(capacity * sizeof(T));
 	}
 
 	T &operator[](size_t index) {
@@ -136,6 +115,15 @@ struct MutableArray
 	}
 
 };
+
+inline
+void test_array()
+{
+	Arena arena = Arena(1024 * 1024);
+	Array<int> arr = Array<int>(arena);
+	arr.push(2);
+
+}
 
 
 template<typename T>

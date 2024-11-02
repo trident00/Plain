@@ -1,9 +1,35 @@
 #include "parser.h"
 #include <unordered_map>
 
+void Parser::report_error(std::string msg, Token *t, Token_Type panic)
+{
+	int line = t->line;
+	int col = t->column;
+	if (panic != (Token_Type)0) {
+		col++;
+	}
+
+	// Spaces before text
+	auto line_str = file.lines[line];
+	::report_error(msg, line_str, line, col);
+
+	if (panic != (Token_Type)0) {
+		while (1) {
+			Token *t = peek_token(this);
+			if (t->type == panic) break;
+			if (t->type == TOKEN_EOF) {
+				std::cerr << "Compilation failed at " << CYAN << file.file_name << RESET << ":" << line << ", " << "exiting ...\n";
+				exit(-1);
+			}
+			eat_token(this);
+		}
+	}
+	parser_error_line = line;
+}
+
 Ast_Binary_Expression *make_binary(Parser *parser, Ast *left, Operator op, Ast *right)
 {
-	Ast_Binary_Expression *result = ast_alloc<Ast_Binary_Expression>(parser);
+	Ast_Binary_Expression *result = ast_alloc<Ast_Binary_Expression>(parser, right->line, right->col);
 	result->left = left;
 	result->op = op;
 	result->right = right;
@@ -13,7 +39,7 @@ Ast_Binary_Expression *make_binary(Parser *parser, Ast *left, Operator op, Ast *
 
 Ast_Declaration *make_decl(Parser *parser, Ast_Ident *ident, Ast_Ident *data_type, Ast_Binary_Expression *init=nullptr)
 {
-	Ast_Declaration *result = ast_alloc<Ast_Declaration>(parser);
+	Ast_Declaration *result = ast_alloc<Ast_Declaration>(parser, ident->line, ident->col);
 	result->ident = ident;
 	result->type = data_type;
 	result->init = init;
@@ -26,19 +52,19 @@ Ast *parse_leaf(Parser *parser)
 	if (peek_token(parser)->type == '(') {
 		eat_token(parser);
 		auto *result = parse_expression(parser);
-		consume_token(parser, ')');
+		expect_character(parser, ')');
 		return result;
 	}
 
 	Token* t = peek_token(parser);
 	if (t->type == TOKEN_IDENT) {
-		Ast_Ident *ident = ast_alloc<Ast_Ident>(parser);
+		Ast_Ident *ident = ast_alloc<Ast_Ident>(parser, t->line, t->column);
 		ident->string_value = t->string_value;
 		eat_token(parser);
 		return (Ast *)ident;
 
 	} else if (t->type == TOKEN_NUMBER) {
-		Ast_Literal *literal = ast_alloc<Ast_Literal>(parser);
+		Ast_Literal *literal = ast_alloc<Ast_Literal>(parser, t->line, t->column);
 		literal->literal_type = LITERAL_INT;
 		literal->integer_value = t->integer_value;
 		eat_token(parser);
@@ -107,8 +133,8 @@ Ast *parse_statement(Parser *parser)
 				eat_token(parser);
 
 				auto *init = static_cast<Ast_Binary_Expression *>(parse_expression(parser));
-				assert(peek_token(parser)->type == ';');
-				eat_token(parser);
+				if (peek_token(parser)->type != ';') parser->report_error("Expected ';' after statement", last_token(parser), (Token_Type)';');
+				else eat_token(parser);
 
 				return make_decl(parser, ident, (Ast_Ident *)data_type, init);
 			}
@@ -122,18 +148,18 @@ Ast *parse_statement(Parser *parser)
 		}
 
 		Ast *exp = parse_expression(parser);
-		consume_token(parser, ';');
+		expect_character(parser, ';');
 		return exp;
 
 	}
 
 	if (symbol->type == TOKEN_KEYWORD_IF) {
 		eat_token(parser);
-		Ast_If *result = ast_alloc<Ast_If>(parser);
+		Ast_If *result = ast_alloc<Ast_If>(parser, symbol->line, symbol->column);
 
 		result->condition = (Ast_Binary_Expression *)parse_expression(parser);
 
-		consume_token(parser, (Token_Type)'{');
+		expect_character(parser, '{');
 		return result;
 
 	}

@@ -1,5 +1,5 @@
 x:int=2;
-y:int=5;
-if (x < y) {
-  x = x + y;
+y := x;
+if (x < y {
+  z = x + y;
 }

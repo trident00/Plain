@@ -96,12 +96,9 @@ enum Ast_Type
 
 struct Ast
 {
-	Ast(Ast_Type t = AST_ERROR, int line=-1, int col=-1) : type(t), line(line), col(col) {
-		line_string = 
-	}
+	Ast(Ast_Type t = AST_ERROR, int line=-1, int col=-1) : type(t), line(line), col(col) {}
 	Ast_Type type;
 	int line;
-	std::string &line_string;
 	int col;
 
 #ifdef _DEBUG
@@ -144,7 +141,7 @@ struct Ast_Literal : Ast
 	union {
 		char *string_value;
 		double float_value;
-		int integer_value;
+		long long integer_value;
 	};
 };
 
@@ -156,6 +153,9 @@ enum Scope
 
 struct Symbol
 {
+	Symbol() {}
+	Symbol(char *ident, bool is_initialized, Ast_Block *block) : ident(ident), is_initialized(is_initialized), block(block) {}
+
 	char *ident = nullptr;
 	bool is_initialized = false;
 	Ast_Block *block = nullptr; // Uses?
@@ -164,13 +164,13 @@ struct Symbol
 
 struct Ast_Block : Ast
 {
-	Ast_Block(Arena &arena, Scope scope = SCOPE_BLOCK) : Ast(AST_BLOCK), scope(scope), nodes(arena), symbols(nullptr), parent_block(nullptr) {}
+	Ast_Block(Arena &arena, Scope scope = SCOPE_BLOCK) : Ast(AST_BLOCK), scope(scope), nodes(arena), symbols(arena, false, 0), parent_block(nullptr) {}
 
 	Scope scope;
-	MutableArray<Ast *> nodes;
+	Array<Ast *> nodes;
 
 	int num_of_decls = 0;
-	Array<Symbol> *symbols; // In second pass. Interp my have its own symbol table Array with pointers to the Ast_Block?
+	Array<Symbol> symbols;
 
 	Ast_Block *parent_block;
 };

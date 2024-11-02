@@ -4,8 +4,8 @@
 #include <cstring>
 #include <string>
 #include <deque>
-#include "error.h"
 #include "ast.h"
+#include "compiler.h"
 #include "lexer.h"
 
 
@@ -32,31 +32,36 @@ inline bool is_unary_keyword(Token *t){ return t->type == TOKEN_KEYWORD_RETURN; 
 // @FIX
 inline bool is_operator(Token* t) { return t->type <= TOKEN_MINUS_MINUS && t->type > TOKEN_ERROR; }
 
+
 struct Parser
 {
-	Parser(const Array<Token *> &tokens, Error_Manager *err, Arena &arena) : tokens(tokens), error_mgr(err), arena(arena) {}
+	Parser(const Array<Token *> &tokens, Source_File &file, Arena &arena) : tokens(tokens), file(file), arena(arena) {}
 
 	const Array<Token *> &tokens;
-	Error_Manager *error_mgr;
+	Source_File &file;
 	Arena &arena;
-
+	
 
 	Ast_Block *root; // Root AST tree
 	Ast_Block *current_block;
 
 	int token_array_cursor = 0;
-	bool error_reported = false;
+	int parser_error_line = 0;
 #ifdef _DEBUG
 	std::vector<Ast *> nodes;
 	int ast_block_count = 1; // +global
 	int ast_count = 0;
 #endif
+
+	void report_error(std::string msg, Token *t, Token_Type panic=(Token_Type)0);
+
 };
 
 
 //
 // Token iterators
 //
+
 inline Token *peek_token(Parser *parser)
 {
 	Token *t = parser->tokens[parser->token_array_cursor];
@@ -65,7 +70,16 @@ inline Token *peek_token(Parser *parser)
 
 inline Token *peek_next_token(Parser *parser)
 {
+	assert(peek_token(parser)->type != TOKEN_EOF);
 	Token *t = parser->tokens[parser->token_array_cursor + 1];
+	return t;
+}
+
+// for error reporting only
+inline Token *last_token(Parser *parser)
+{
+	assert(parser->token_array_cursor > 0);
+	Token *t = parser->tokens[parser->token_array_cursor - 1];
 	return t;
 }
 
@@ -74,35 +88,24 @@ inline void eat_token(Parser *parser)
 	parser->token_array_cursor++;
 }
 
-inline bool expect_token(Parser *parser, Token_Type type)
+// Error reporting
+inline
+void expect_character(Parser *parser, char type)
 {
-	if (peek_token(parser)->type != type) {
-		//throw_error(parser, "Expected character '" + std::string(1, (char)type) + '\'');
-		return false;
-	}
-	return true;
-}
+	if (peek_token(parser)->type != (Token_Type)type) {
+		std::string msg = "Expected '" + std::string(1, type) + '\'';
+		parser->report_error(msg, last_token(parser), (Token_Type)type);
 
-inline void consume_token(Parser *parser, Token_Type type)
-{
-	bool eat = peek_token(parser)->type == type;
-	if (eat) eat_token(parser);
+	} else eat_token(parser);
 }
-
-inline void consume_token(Parser *parser, char type)
-{
-	consume_token(parser, (Token_Type)type);
-}
-
 
 //
 // Allocations
 //
 template<typename T>
-T *ast_alloc(Parser *parser)
+T *ast_alloc(Parser *parser, int line, int col)
 {
-	Token *t = peek_token(parser);
-	T *ast = new (parser->arena.allocate<T>(sizeof(T))) T(t->line, t->column);
+	T *ast = new (parser->arena.allocate<T>(sizeof(T))) T(line, col);
 #ifdef _DEBUG
 	parser->nodes.push_back(ast);
 	parser->ast_count++;
